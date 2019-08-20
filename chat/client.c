@@ -1,71 +1,30 @@
 #include <sys/types.h>
 #include <sys/ipc.h>
 #include <sys/msg.h>
+
 #include <stdlib.h>
 #include <stdio.h>
-#include <string.h>
-#include <termios.h>
 
+#include <termios.h>
 #include <sys/ioctl.h>
-#include <signal.h>
 #include <ncurses.h>
 
-#include "conf.h"
+#include <pthread.h>
+
 #include "init_chat.h"
 
-int connect(int, char*);
-int disconnect(int, int);
+int id;
 
-int connect(int id, char* name)
-{
-	int ret;
-	struct clientctl bufsnd;
-	struct clientctl bufrcv;
+WINDOW* win_user;
+WINDOW* win_text;
 
-	bufsnd.type = CTL_TO_SERVER;
-	bufsnd.act = CTL_CON;
-	strcpy(bufsnd.name, name);
-
-	ret = msgsnd(id, (void*) &bufsnd, sizeof(struct clientctl), 0);
-	if (ret == -1) {
-		perror("msgsnd");
-		exit(EXIT_FAILURE);
-	}
-
-	ret = msgrcv(id, (void*) &bufrcv, sizeof(struct clientctl),
-			CTL_TO_CLIENT, MSG_NOERROR);
-	if (ret == -1) {
-		perror("msgrcv");
-		exit(EXIT_FAILURE);
-	}
-
-	return bufrcv.id;
-}
-
-int disconnect(int id, int utype)
-{
-	int ret;
-	struct clientctl bufsnd;
-
-	bufsnd.type = CTL_TO_SERVER;
-	bufsnd.act = CTL_DISCON;
-	bufsnd.id = utype;
-
-	ret = msgsnd(id, (void*) &bufsnd, sizeof(struct clientctl), 0);
-	if (ret == -1) {
-		perror("msgsnd");
-		return -1;
-	}
-
-	return 0;
-}
+void* msg_wait(void*);
+void connect(char*);
+int disconnect();
 
 int main(int argc, char** argv)
 {
-	int id;
-	int ret;
 	int act;
-	int utype;
 	key_t key;
 
 	if (argc != 2) {
@@ -73,7 +32,7 @@ int main(int argc, char** argv)
 		return -1;
 	}
 
-	key = ftok(filename, ch);
+	key = ftok("Makefile", 'q');
 	if (key == -1) {
 		perror("ftok");
 		exit(EXIT_FAILURE);
@@ -85,18 +44,22 @@ int main(int argc, char** argv)
 		exit(EXIT_FAILURE);
 	}
 
-	utype = connect(id, argv[1]);
-
-	WINDOW* win_user;
-	WINDOW* win_text;
+	connect(argv[1]);
 
 	init_chat(&win_text, &win_user);
 
+	pthread_t tid;
+
+	pthread_create(&tid, NULL, msg_wait, NULL);
+
+	wmove(win_text, 0, 0);
 	while ((act = wgetch(stdscr)) != KEY_F(10)) {
-	//	ret = 
+
 	}
 
-	disconnect(id, utype);
+	pthread_cancel(tid);
+	
+	disconnect();
 
 	endwin();
 

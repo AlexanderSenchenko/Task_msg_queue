@@ -7,7 +7,7 @@ struct list* create_node(char* name, int id)
 {
 	struct list* head = malloc(sizeof(struct list));
 
-	strcpy(head->name, name);
+	strncpy(head->name, name, 16);
 	head->id = id;
 	head->next = NULL;
 

@@ -20,7 +20,12 @@ struct clientctl {
 	char name[16];
 };
 
-
+struct message {
+	long type;
+	int act;
+	int size;
+	char message[64];
+};
 
 const char* filename = "Makefile";
 const char ch = 'q';
