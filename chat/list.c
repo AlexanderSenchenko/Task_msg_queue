@@ -35,7 +35,7 @@ int add_node(struct list** head, char* name, int id)
 	return 0;
 }
 
-int del_node(struct list** head, int id)
+int del_node_id(struct list** head, int id)
 {
 	struct list* node = *head;
 	struct list* parent = NULL;
@@ -57,8 +57,33 @@ int del_node(struct list** head, int id)
 		*head = next;
 	}
 
-	// memset(node->name, 0, 16);
-	// node->next = NULL;
+	free(node);
+
+	return 0;
+}
+
+int del_node_name(struct list** head, const char* name)
+{
+	struct list* node = *head;
+	struct list* parent = NULL;
+	struct list* next = NULL;
+
+	while ((node != NULL) && (strncmp(node->name, name, 16) != 0)) {
+		parent = node;
+		node = node->next;
+	}
+
+	if (node == NULL)
+		return -1;
+
+	next = node->next;
+
+	if (parent != NULL) {
+		parent->next = next;
+	} else {
+		*head = next;
+	}
+
 	free(node);
 
 	return 0;

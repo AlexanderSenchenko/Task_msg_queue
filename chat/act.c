@@ -1,4 +1,5 @@
 #include <sys/types.h>
+
 #include <sys/ipc.h>
 #include <sys/msg.h>
 
@@ -47,8 +48,11 @@ void* msg_wait(void* ptr)
 		}
 
 		switch (buf.act) {
-			case MSG_USER_LIST:
-				get_user_list(buf);
+			case MSG_ADD_USER:
+				add_user(buf);
+				break;
+			case MSG_DEL_USER:
+				del_user(buf);
 				break;
 			case MSG_RCV:
 				break;
@@ -60,7 +64,7 @@ void* msg_wait(void* ptr)
 	return NULL;
 }
 
-void get_user_list(struct message buf)
+void add_user(struct message buf)
 {
 	int i;
 	char name[16];
@@ -78,6 +82,16 @@ void get_user_list(struct message buf)
 	wrefresh(win_user);
 }
 
+void del_user(struct message buf)
+{
+	del_node_name(&head, buf.message);
+	count_users--;
+
+	wclear(win_user);
+
+	print_user();
+}
+
 void print_user()
 {
 	struct list* node = head;
@@ -86,6 +100,7 @@ void print_user()
 		wprintw(win_user, "%s\n", node->name);
 		node = node->next;
 	}
+	wrefresh(win_user);
 }
 
 void connect(char* name)

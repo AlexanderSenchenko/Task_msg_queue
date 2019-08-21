@@ -81,7 +81,7 @@ static void client_connect(struct message* msg, struct list** head)
 
 	snd_list_user(*head, cltype);
 
-	broadcast(*head, cltype, MSG_USER_LIST, ptr->name, 16);
+	broadcast(*head, cltype, MSG_ADD_USER, ptr->name, 16);
 }
 
 static void broadcast(struct list* head, int cltype, int act, char* str, int size)
@@ -118,7 +118,7 @@ static void snd_list_user(struct list* head, int cltype)
 	int ret;
 
 	msg.type = (long) cltype;
-	msg.act = MSG_USER_LIST;
+	msg.act = MSG_ADD_USER;
 
 	while (node != NULL) {
 		for (i = 0; (node != NULL) && (i < 4); ++i) {
@@ -160,5 +160,25 @@ static void client_disconnect(struct message* msg, struct list** head)
 	printf("Count clients: %d\n", count_clients);
 	printf("%s disconnect\n", node->name);
 
-	del_node(head, ptr->id);
+	int i;
+	struct message msg_snd;
+	struct list* node_broadcast;
+	int ret;
+
+	msg_snd.act = MSG_DEL_USER;
+	strncpy(msg_snd.message, node->name, 16);
+	msg_snd.size = i;
+
+	del_node_id(head, ptr->id);
+
+	node = *head;
+	while (node != NULL) {
+		msg_snd.type = (long) node->id;
+
+		ret = msgsnd(id, (void*) &msg_snd, sizeof(struct message), 0);
+		if (ret == -1)
+			perror("msgsnd");
+
+		node = node->next;
+	}
 }

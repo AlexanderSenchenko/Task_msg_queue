@@ -3,7 +3,8 @@
 
 void connect(char*);
 int disconnect();
-void get_user_list(struct message);
+void add_user(struct message);
+void del_user(struct message);
 void* msg_wait(void*);
 void print_user();
 
