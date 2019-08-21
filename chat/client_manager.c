@@ -42,6 +42,11 @@ void client_manager()
 			case CTL_DISCON:
 				client_disconnect(&msgbuf, &head);
 				break;
+			case MSG_SND:
+				broadcast_message(&msgbuf, head);
+				break;
+			case MSG_RCV:
+				break;
 			default:
 				break;
 		}
@@ -54,9 +59,34 @@ void client_manager()
 			node = node->next;
 		}
 		#endif
+
+		memset(msgbuf.message, '0', 64);
 	}
 
 	free_list(head);
+}
+
+void broadcast_message(struct message* msg, struct list* head)
+{
+	struct list* node = head;
+	int ret;
+
+	msg->act = MSG_RCV;
+
+	while (node != NULL) {
+		if (node->id == msg->id) {
+			node = node->next;
+			continue;
+		}
+
+		msg->type = (long) node->id;
+
+		ret = msgsnd(id, (void*) msg, sizeof(struct message), 0);
+		if (ret == -1)
+			perror("msgsnd");
+
+		node = node->next;
+	}
 }
 
 static void client_connect(struct message* msg, struct list** head)

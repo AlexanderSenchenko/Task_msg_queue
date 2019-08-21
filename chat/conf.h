@@ -24,6 +24,7 @@ struct clientctl {
 struct message {
 	long type;
 	int act;
+	int id;
 	int size;
 	char message[64];
 };

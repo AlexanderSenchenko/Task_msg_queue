@@ -28,6 +28,80 @@ extern WINDOW* win_text;
 extern WINDOW* win_user;
 extern WINDOW* win_msg;
 
+int size_buf = 0;
+
+int text_row = 0;
+
+void recive_message(struct message msg)
+{
+	char* str = malloc(sizeof(char) * msg.size);
+	strncpy(str, msg.message, msg.size);
+
+	wmove(win_text, text_row, 0);
+	wprintw(win_text, "%s", str);
+	wrefresh(win_text);
+
+	text_row++;
+	free(str);
+}
+
+void send_message(char* buf)
+{
+	int ret;
+	struct message msg;
+
+	buf[size_buf++] = '\0';
+
+	msg.type = CTL_TO_SERVER;
+	msg.act = MSG_SND;
+	msg.id = (int) utype;
+	msg.size = size_buf;
+	strncpy(msg.message, buf, size_buf);
+
+	ret = msgsnd(id, (void*) &msg, sizeof(struct message), 0);
+	if (ret == -1) {
+		perror("msgsnd");
+		return;
+	}
+
+	wmove(win_text, text_row, 0);
+	wprintw(win_text, "%s", buf);
+	wrefresh(win_text);
+
+	text_row++;
+
+	wmove(win_msg, 0, 0);
+	whline(win_msg, ' ', 64);
+	wrefresh(win_msg);
+
+	memset(buf, 0, size_buf);
+	size_buf = 0;
+}
+
+void add_sym(char* buf, int ch)
+{
+	if (size_buf == 62)
+		return;
+
+	wmove(win_msg, 0, size_buf);
+	wprintw(win_msg, "%c", ch);
+	wrefresh(win_msg);
+
+	buf[size_buf++] = ch;
+}
+
+void del_sym(char* buf)
+{
+	if (size_buf == 0)
+		return;
+
+	wmove(win_msg, 0, size_buf - 1);
+	wprintw(win_msg, "%c", ' ');
+	wrefresh(win_msg);
+
+	buf[size_buf--] = 0;
+}
+
 void* msg_wait(void* ptr)
 {
 	int ret;	
@@ -56,6 +130,7 @@ void* msg_wait(void* ptr)
 				del_user(buf);
 				break;
 			case MSG_RCV:
+				recive_message(buf);
 				break;
 			default:
 				break; 

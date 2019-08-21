@@ -19,6 +19,9 @@ WINDOW* win_user;
 WINDOW* win_text;
 WINDOW* win_msg;
 
+void send_message(char*);
+void add_sym(char*, int);
+void del_sym(char*);
 void* msg_wait(void*);
 void connect(char*);
 int disconnect();
@@ -53,14 +56,19 @@ int main(int argc, char** argv)
 
 	pthread_create(&tid, NULL, msg_wait, NULL);
 
+	char buf[64];
+
 	wmove(win_text, 0, 0);
 	while ((act = wgetch(stdscr)) != KEY_F(10)) {
 		switch (act) {
 			case 10: // Enter
+				send_message(buf);
 				break;
 			case KEY_BACKSPACE:
+				del_sym(buf);
 				break;
 			default:
+				add_sym(buf, act);
 				break;
 		}
 	}
