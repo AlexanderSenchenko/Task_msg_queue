@@ -8,6 +8,8 @@
 
 #define COL_LIST_USERS 18
 
+#define ROW_WIN_MSG 3
+
 void sig_winch(int signo)
 {
 	struct winsize size;
@@ -15,10 +17,11 @@ void sig_winch(int signo)
 	resizeterm(size.ws_row, size.ws_col);
 }
 
-int init_chat(WINDOW** win_text, WINDOW** win_user)
+int init_chat(WINDOW** win_text, WINDOW** win_user, WINDOW** win_msg)
 {
 	int max_y, max_x;
 	int col_text;
+	int row;
 
 	initscr();
 	signal(SIGWINCH, sig_winch);
@@ -32,10 +35,15 @@ int init_chat(WINDOW** win_text, WINDOW** win_user)
 
 	col_text = max_x - COL_LIST_USERS - 1;
 
-	if (init_win(win_text, max_y, col_text, 0, 0) == -1)
+	row = max_y - ROW_WIN_MSG;
+
+	if (init_win(win_text, row, col_text, 0, 0) == -1)
 		return -1;
 
-	if (init_win(win_user, max_y, COL_LIST_USERS, 0, col_text + 1) == -1)
+	if (init_win(win_user, row, COL_LIST_USERS, 0, col_text + 1) == -1)
+		return -1;
+
+	if (init_win(win_msg, ROW_WIN_MSG, max_x, row, 0) == -1)
 		return -1;
 
 	return 0;

@@ -17,6 +17,7 @@ int id;
 
 WINDOW* win_user;
 WINDOW* win_text;
+WINDOW* win_msg;
 
 void* msg_wait(void*);
 void connect(char*);
@@ -46,7 +47,7 @@ int main(int argc, char** argv)
 
 	connect(argv[1]);
 
-	init_chat(&win_text, &win_user);
+	init_chat(&win_text, &win_user, &win_msg);
 
 	pthread_t tid;
 
@@ -54,7 +55,14 @@ int main(int argc, char** argv)
 
 	wmove(win_text, 0, 0);
 	while ((act = wgetch(stdscr)) != KEY_F(10)) {
-
+		switch (act) {
+			case 10: // Enter
+				break;
+			case KEY_BACKSPACE:
+				break;
+			default:
+				break;
+		}
 	}
 
 	pthread_cancel(tid);

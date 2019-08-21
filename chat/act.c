@@ -26,6 +26,7 @@ int count_users = 0;
 
 extern WINDOW* win_text;
 extern WINDOW* win_user;
+extern WINDOW* win_msg;
 
 void* msg_wait(void* ptr)
 {
