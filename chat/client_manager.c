@@ -18,14 +18,15 @@ int count = 0;
 void client_manager()
 {
 	int ret;
-	struct message msgbuf;
+	int size_msg = sizeof(struct message);
+	struct message msg; 
 
 	struct list* head = NULL;
 	struct list* node = NULL;
 
 	while (1) {
-		ret = msgrcv(id, (void*) &msgbuf, sizeof(struct message),
-				CTL_TO_SERVER, MSG_NOERROR);
+		ret = msgrcv(id, (void*) &msg, size_msg, CTL_TO_SERVER,
+								MSG_NOERROR);
 		if (ret == -1) {
 			if (errno == EIDRM) {
 				perror("msgrcv");
@@ -35,38 +36,89 @@ void client_manager()
 			continue;
 		}
 
-		switch (msgbuf.act) {
+		switch (msg.act) {
 			case CTL_CON:
-				client_connect(&msgbuf, &head);
+				client_connect(&msg, &head);
 				break;
 			case CTL_DISCON:
-				client_disconnect(&msgbuf, &head);
+				client_disconnect(&msg, &head);
 				break;
 			case MSG_SND:
-				broadcast_message(&msgbuf, head);
-				break;
-			case MSG_RCV:
+				broadcast_message(&msg, head);
 				break;
 			default:
 				break;
 		}
-
-		#if 0
-		node = head;
-		printf("List clients:\n");
-		while (node != NULL) {
-			printf("Id %d Name: %s\n", node->id, node->name);
-			node = node->next;
-		}
-		#endif
-
-		memset(msgbuf.message, '0', 64);
 	}
 
 	free_list(head);
 }
 
-void broadcast_message(struct message* msg, struct list* head)
+static void client_connect(struct message* msg, struct list** head)
+{
+	int cltype;
+	struct clientctl* ptr = (struct clientctl*) msg;
+
+	count_clients++;
+	count++;
+
+	cltype = count + 100;
+
+	add_node(head, ptr->name, cltype);
+
+	printf("Count clients: %d\n", count_clients);
+	printf("%s connent\n", ptr->name);
+
+	snd_conf_info(cltype);
+
+	snd_list_user(*head, cltype);
+
+	struct clientctl snd;
+
+	snd.act = MSG_CON;
+	snd.id = cltype;
+	strncpy(snd.name, ptr->name, 16);
+
+	broadcast(*head, cltype, (void*) &snd, sizeof(struct clientctl));
+}
+
+static void client_disconnect(struct message* msg, struct list** head)
+{
+	struct clientctl* ptr;
+	struct list* node;
+
+	ptr = (struct clientctl*) msg;
+
+	count_clients--;
+
+	node = search_node_id(*head, ptr->id);
+	printf("Count clients: %d\n", count_clients);
+	printf("%s disconnect\n", node->name);
+
+	struct clientctl snd;
+
+	snd.act = MSG_DISCON;
+	snd.id = node->id;
+
+	broadcast(*head, ptr->id, (void*) &snd, sizeof(struct clientctl));
+
+	del_node_id(head, ptr->id);
+
+	#if 0
+	node = *head;
+	while (node != NULL) {
+		msg_snd.type = (long) node->id;
+
+		ret = msgsnd(id, (void*) &msg_snd, sizeof(struct message), 0);
+		if (ret == -1)
+			perror("msgsnd");
+
+		node = node->next;
+	}
+	#endif
+}
+
+static void broadcast_message(struct message* msg, struct list* head)
 {
 	struct list* node = head;
 	int ret;
@@ -89,40 +141,11 @@ void broadcast_message(struct message* msg, struct list* head)
 	}
 }
 
-static void client_connect(struct message* msg, struct list** head)
-{
-	struct clientctl* ptr;
-
-	int cltype;
-
-	ptr = (struct clientctl*) msg;
-
-	count_clients++;
-	count++;
-
-	cltype = count + 100;
-
-	add_node(head, ptr->name, cltype);
-
-	printf("Count clients: %d\n", count_clients);
-	printf("%s connent\n", ptr->name);
-
-	snd_conf_info(cltype);
-
-	snd_list_user(*head, cltype);
-
-	broadcast(*head, cltype, MSG_ADD_USER, ptr->name, 16);
-}
-
-static void broadcast(struct list* head, int cltype, int act, char* str, int size)
+static void broadcast(struct list* head, int cltype, void* msg, int size)
 {
 	struct list* node = head;
-	struct message msg;
+	struct clientctl* ptr = (struct clientctl*) msg;
 	int ret;
-
-	msg.act = act;
-	msg.size = 1;
-	strncpy(msg.message, str, size);
 
 	while (node != NULL) {
 		if (node->id == cltype) {
@@ -130,9 +153,9 @@ static void broadcast(struct list* head, int cltype, int act, char* str, int siz
 			continue;
 		}
 
-		msg.type = (long) node->id;
+		ptr->type = (long) node->id;
 
-		ret = msgsnd(id, (void*) &msg, sizeof(struct message), 0);
+		ret = msgsnd(id, (void*) ptr, size, 0);
 		if (ret == -1)
 			perror("msgsnd");
 
@@ -143,22 +166,23 @@ static void broadcast(struct list* head, int cltype, int act, char* str, int siz
 static void snd_list_user(struct list* head, int cltype)
 {
 	struct list* node = head;
-	struct message msg;
+	struct user_list msg;
 	int i;
 	int ret;
 
 	msg.type = (long) cltype;
-	msg.act = MSG_ADD_USER;
+	msg.act = MSG_USER_LIST;
 
 	while (node != NULL) {
 		for (i = 0; (node != NULL) && (i < 4); ++i) {
-			strcpy(&(msg.message[16 * i]), node->name);
+			msg.id[i] = node->id;
+			strcpy(msg.list[i], node->name);
 			node = node->next;
 		}
 
-		msg.size = i;
+		msg.count = i;
 
-		ret = msgsnd(id, (void*) &msg, sizeof(struct message), 0);
+		ret = msgsnd(id, (void*) &msg, sizeof(struct user_list), 0);
 		if (ret == -1)
 			perror("msgsnd");
 	}
@@ -175,40 +199,4 @@ static void snd_conf_info(int cltype)
 	ret = msgsnd(id, (void*) &msg, sizeof(struct clientctl), 0);
 	if (ret == -1)
 		perror("msgsnd");
-}
-
-static void client_disconnect(struct message* msg, struct list** head)
-{
-	struct clientctl* ptr;
-	struct list* node;
-
-	ptr = (struct clientctl*) msg;
-
-	count_clients--;
-
-	node = search_node(*head, ptr->id);
-	printf("Count clients: %d\n", count_clients);
-	printf("%s disconnect\n", node->name);
-
-	int i;
-	struct message msg_snd;
-	struct list* node_broadcast;
-	int ret;
-
-	msg_snd.act = MSG_DEL_USER;
-	strncpy(msg_snd.message, node->name, 16);
-	msg_snd.size = i;
-
-	del_node_id(head, ptr->id);
-
-	node = *head;
-	while (node != NULL) {
-		msg_snd.type = (long) node->id;
-
-		ret = msgsnd(id, (void*) &msg_snd, sizeof(struct message), 0);
-		if (ret == -1)
-			perror("msgsnd");
-
-		node = node->next;
-	}
 }

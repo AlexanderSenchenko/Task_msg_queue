@@ -89,11 +89,21 @@ int del_node_name(struct list** head, const char* name)
 	return 0;
 }
 
-struct list* search_node(struct list* head, int id)
+struct list* search_node_id(struct list* head, int id)
 {
 	struct list* node = head;
 
 	while ((node != NULL) && (node->id != id))
+		node = node->next;
+
+	return node;
+}
+
+struct list* search_node_name(struct list* head, const char* name)
+{
+	struct list* node = head;
+
+	while ((node != NULL) && (strncmp(name, node->name, 16) == 0))
 		node = node->next;
 
 	return node;

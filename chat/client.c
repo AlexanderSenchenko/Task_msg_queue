@@ -4,6 +4,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 
 #include <termios.h>
 #include <sys/ioctl.h>
@@ -14,6 +15,7 @@
 #include "init_chat.h"
 
 int id;
+char name[16];
 
 WINDOW* win_user;
 WINDOW* win_text;
@@ -35,6 +37,8 @@ int main(int argc, char** argv)
 		printf("Name not specified\n");
 		return -1;
 	}
+
+	strcpy(name, argv[1]);
 
 	key = ftok("Makefile", 'q');
 	if (key == -1) {
